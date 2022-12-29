@@ -24,7 +24,6 @@ const _ = grpc.SupportPackageIsVersion7
 type BiddingServiceClient interface {
 	Handshake(ctx context.Context, in *ClientHandshake, opts ...grpc.CallOption) (BiddingService_HandshakeClient, error)
 	SendBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (BiddingService_SendBidClient, error)
-	RequestCurrentResult(ctx context.Context, in *Request, opts ...grpc.CallOption) (BiddingService_RequestCurrentResultClient, error)
 }
 
 type biddingServiceClient struct {
@@ -99,45 +98,12 @@ func (x *biddingServiceSendBidClient) Recv() (*BidResponse, error) {
 	return m, nil
 }
 
-func (c *biddingServiceClient) RequestCurrentResult(ctx context.Context, in *Request, opts ...grpc.CallOption) (BiddingService_RequestCurrentResultClient, error) {
-	stream, err := c.cc.NewStream(ctx, &BiddingService_ServiceDesc.Streams[2], "/request.BiddingService/RequestCurrentResult", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &biddingServiceRequestCurrentResultClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type BiddingService_RequestCurrentResultClient interface {
-	Recv() (*RequestResponse, error)
-	grpc.ClientStream
-}
-
-type biddingServiceRequestCurrentResultClient struct {
-	grpc.ClientStream
-}
-
-func (x *biddingServiceRequestCurrentResultClient) Recv() (*RequestResponse, error) {
-	m := new(RequestResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 // BiddingServiceServer is the server API for BiddingService service.
 // All implementations must embed UnimplementedBiddingServiceServer
 // for forward compatibility
 type BiddingServiceServer interface {
 	Handshake(*ClientHandshake, BiddingService_HandshakeServer) error
 	SendBid(*Bid, BiddingService_SendBidServer) error
-	RequestCurrentResult(*Request, BiddingService_RequestCurrentResultServer) error
 	mustEmbedUnimplementedBiddingServiceServer()
 }
 
@@ -150,9 +116,6 @@ func (UnimplementedBiddingServiceServer) Handshake(*ClientHandshake, BiddingServ
 }
 func (UnimplementedBiddingServiceServer) SendBid(*Bid, BiddingService_SendBidServer) error {
 	return status.Errorf(codes.Unimplemented, "method SendBid not implemented")
-}
-func (UnimplementedBiddingServiceServer) RequestCurrentResult(*Request, BiddingService_RequestCurrentResultServer) error {
-	return status.Errorf(codes.Unimplemented, "method RequestCurrentResult not implemented")
 }
 func (UnimplementedBiddingServiceServer) mustEmbedUnimplementedBiddingServiceServer() {}
 
@@ -209,27 +172,6 @@ func (x *biddingServiceSendBidServer) Send(m *BidResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _BiddingService_RequestCurrentResult_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Request)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(BiddingServiceServer).RequestCurrentResult(m, &biddingServiceRequestCurrentResultServer{stream})
-}
-
-type BiddingService_RequestCurrentResultServer interface {
-	Send(*RequestResponse) error
-	grpc.ServerStream
-}
-
-type biddingServiceRequestCurrentResultServer struct {
-	grpc.ServerStream
-}
-
-func (x *biddingServiceRequestCurrentResultServer) Send(m *RequestResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 // BiddingService_ServiceDesc is the grpc.ServiceDesc for BiddingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -246,11 +188,6 @@ var BiddingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "SendBid",
 			Handler:       _BiddingService_SendBid_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "RequestCurrentResult",
-			Handler:       _BiddingService_RequestCurrentResult_Handler,
 			ServerStreams: true,
 		},
 	},

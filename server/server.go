@@ -71,12 +71,12 @@ func(s *server) Handshake(in *request.ClientHandshake, srv request.BiddingServic
 	log.Printf("Handshake 	%s", in.Name)
 
 	resp := &request.BidResponse{}
-	resp.Response = "Succes"
+	resp.Response = 0
 	srv.Send(resp);	
 	return nil;
 }
 
-func (s *server) SendBid(in *request.Bid, srv request.BiddingService_SendBidServer) error{
+func (s *server) SendBid(in *request.Bid, srv request.BiddingService_SendBidServer) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -91,44 +91,19 @@ func (s *server) SendBid(in *request.Bid, srv request.BiddingService_SendBidServ
 	output.WriteString(fmt.Sprintf("Bid\t\t%s", in.Name))
 
 	if s.isOver {
-		resp.Response = "Fail"
-		output.WriteString(fmt.Sprintf("\t%s with %v but auction over, winner: %s , with: %v", resp.Response, in.Amount, s.currentBidOwner, s.currentBid))
-	} else if in.Amount > s.currentBid {
-		s.currentBid = in.Amount
-		s.currentBidOwner = in.Name
-		resp.Response = "Success"
-		output.WriteString(fmt.Sprintf("\t%s with %v", resp.Response, in.Amount))
-	} else if in.Amount <= s.currentBid {
-		resp.Response = "Fail"
-		output.WriteString(fmt.Sprintf("\t%s with %v", resp.Response, in.Amount))
+		resp.Response = -1
+		output.WriteString(fmt.Sprintf("\t%v with TODO but auction over, winner: %s , with: %v", resp.Response, s.currentBidOwner, s.currentBid))
 	} else {
-		resp.Response = "Exception"
-		output.WriteString(fmt.Sprintf("\t%s with %v", resp.Response, in.Amount))
+		s.currentBid += 1
+		s.currentBidOwner = in.Name
+		resp.Response = s.currentBid
+		output.WriteString(fmt.Sprintf("\t%v with increment", resp.Response))
 	}
 
 	log.Print(output.String())
 	
 	srv.Send(resp)
 	return nil
-}
-
-func (s *server) RequestCurrentResult(in *request.Request, srv request.BiddingService_RequestCurrentResultServer) error {
-	log.Printf("Request\t%s	highest bid is: %v by: %s", in.Name, s.currentBid, s.currentBidOwner)
-
-	if (time.Until(s.auctionEnd) <= 0) {
-		s.isOver = true
-	}
-	
-	resp := &request.RequestResponse{}
-	resp.HighestBid = s.currentBid
-	resp.IsOver = s.isOver
-	if s.isOver {
-		resp.WinnerName = s.currentBidOwner
-	} else {
-		resp.WinnerName = ""
-	}
-	srv.Send(resp);
-	return nil;
 }
 
 type server struct{

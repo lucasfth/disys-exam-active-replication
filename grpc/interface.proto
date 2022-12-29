@@ -7,7 +7,6 @@ option go_package = "https://github.com/lucasfth/disys-active-replication;reques
 service BiddingService{
     rpc Handshake (ClientHandshake) returns (stream BidResponse) {}
     rpc SendBid (Bid) returns (stream BidResponse) {}
-    rpc RequestCurrentResult (Request) returns (stream RequestResponse) {}
 }
 
 message ClientHandshake {
@@ -17,19 +16,8 @@ message ClientHandshake {
 
 message Bid{
     string name = 1;
-    int32 amount = 2;
-}
-
-message Request{
-    string name = 1;
 }
 
 message BidResponse{
-     string response = 1; // Success, Fail, Exception
-}
-
-message RequestResponse{
-    int32 highestBid = 1;
-    bool isOver = 2;
-    string winnerName = 3;
+     int32 response = 1; 
 }
