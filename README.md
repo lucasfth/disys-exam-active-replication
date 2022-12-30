@@ -11,7 +11,6 @@ First write command:
 go run server/server.go
 ```
 If it is the first server then write `1` after running the above command. If it is the second then write `2` and if it is the third write `3` and hit enter.
-Then you have to write at which point you want the bidding to stop. This is expressed as the clock you want it to stop. The format is `<HH MM>` followed by hitting enter.
 These steps has to be done for all three servers.
 
 ### Start client
