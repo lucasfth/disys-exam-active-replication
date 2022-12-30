@@ -23,8 +23,8 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BiddingServiceClient interface {
 	Handshake(ctx context.Context, in *ClientHandshake, opts ...grpc.CallOption) (BiddingService_HandshakeClient, error)
-	SendBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (BiddingService_SendBidClient, error)
-	RequestCurrentResult(ctx context.Context, in *Request, opts ...grpc.CallOption) (BiddingService_RequestCurrentResultClient, error)
+	SendBid(ctx context.Context, in *Put, opts ...grpc.CallOption) (BiddingService_SendBidClient, error)
+	RequestCurrentResult(ctx context.Context, in *Get, opts ...grpc.CallOption) (BiddingService_RequestCurrentResultClient, error)
 }
 
 type biddingServiceClient struct {
@@ -51,7 +51,7 @@ func (c *biddingServiceClient) Handshake(ctx context.Context, in *ClientHandshak
 }
 
 type BiddingService_HandshakeClient interface {
-	Recv() (*BidResponse, error)
+	Recv() (*PutResponse, error)
 	grpc.ClientStream
 }
 
@@ -59,15 +59,15 @@ type biddingServiceHandshakeClient struct {
 	grpc.ClientStream
 }
 
-func (x *biddingServiceHandshakeClient) Recv() (*BidResponse, error) {
-	m := new(BidResponse)
+func (x *biddingServiceHandshakeClient) Recv() (*PutResponse, error) {
+	m := new(PutResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *biddingServiceClient) SendBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (BiddingService_SendBidClient, error) {
+func (c *biddingServiceClient) SendBid(ctx context.Context, in *Put, opts ...grpc.CallOption) (BiddingService_SendBidClient, error) {
 	stream, err := c.cc.NewStream(ctx, &BiddingService_ServiceDesc.Streams[1], "/request.BiddingService/SendBid", opts...)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (c *biddingServiceClient) SendBid(ctx context.Context, in *Bid, opts ...grp
 }
 
 type BiddingService_SendBidClient interface {
-	Recv() (*BidResponse, error)
+	Recv() (*PutResponse, error)
 	grpc.ClientStream
 }
 
@@ -91,15 +91,15 @@ type biddingServiceSendBidClient struct {
 	grpc.ClientStream
 }
 
-func (x *biddingServiceSendBidClient) Recv() (*BidResponse, error) {
-	m := new(BidResponse)
+func (x *biddingServiceSendBidClient) Recv() (*PutResponse, error) {
+	m := new(PutResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *biddingServiceClient) RequestCurrentResult(ctx context.Context, in *Request, opts ...grpc.CallOption) (BiddingService_RequestCurrentResultClient, error) {
+func (c *biddingServiceClient) RequestCurrentResult(ctx context.Context, in *Get, opts ...grpc.CallOption) (BiddingService_RequestCurrentResultClient, error) {
 	stream, err := c.cc.NewStream(ctx, &BiddingService_ServiceDesc.Streams[2], "/request.BiddingService/RequestCurrentResult", opts...)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (c *biddingServiceClient) RequestCurrentResult(ctx context.Context, in *Req
 }
 
 type BiddingService_RequestCurrentResultClient interface {
-	Recv() (*RequestResponse, error)
+	Recv() (*GetResponse, error)
 	grpc.ClientStream
 }
 
@@ -123,8 +123,8 @@ type biddingServiceRequestCurrentResultClient struct {
 	grpc.ClientStream
 }
 
-func (x *biddingServiceRequestCurrentResultClient) Recv() (*RequestResponse, error) {
-	m := new(RequestResponse)
+func (x *biddingServiceRequestCurrentResultClient) Recv() (*GetResponse, error) {
+	m := new(GetResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -136,8 +136,8 @@ func (x *biddingServiceRequestCurrentResultClient) Recv() (*RequestResponse, err
 // for forward compatibility
 type BiddingServiceServer interface {
 	Handshake(*ClientHandshake, BiddingService_HandshakeServer) error
-	SendBid(*Bid, BiddingService_SendBidServer) error
-	RequestCurrentResult(*Request, BiddingService_RequestCurrentResultServer) error
+	SendBid(*Put, BiddingService_SendBidServer) error
+	RequestCurrentResult(*Get, BiddingService_RequestCurrentResultServer) error
 	mustEmbedUnimplementedBiddingServiceServer()
 }
 
@@ -148,10 +148,10 @@ type UnimplementedBiddingServiceServer struct {
 func (UnimplementedBiddingServiceServer) Handshake(*ClientHandshake, BiddingService_HandshakeServer) error {
 	return status.Errorf(codes.Unimplemented, "method Handshake not implemented")
 }
-func (UnimplementedBiddingServiceServer) SendBid(*Bid, BiddingService_SendBidServer) error {
+func (UnimplementedBiddingServiceServer) SendBid(*Put, BiddingService_SendBidServer) error {
 	return status.Errorf(codes.Unimplemented, "method SendBid not implemented")
 }
-func (UnimplementedBiddingServiceServer) RequestCurrentResult(*Request, BiddingService_RequestCurrentResultServer) error {
+func (UnimplementedBiddingServiceServer) RequestCurrentResult(*Get, BiddingService_RequestCurrentResultServer) error {
 	return status.Errorf(codes.Unimplemented, "method RequestCurrentResult not implemented")
 }
 func (UnimplementedBiddingServiceServer) mustEmbedUnimplementedBiddingServiceServer() {}
@@ -176,7 +176,7 @@ func _BiddingService_Handshake_Handler(srv interface{}, stream grpc.ServerStream
 }
 
 type BiddingService_HandshakeServer interface {
-	Send(*BidResponse) error
+	Send(*PutResponse) error
 	grpc.ServerStream
 }
 
@@ -184,12 +184,12 @@ type biddingServiceHandshakeServer struct {
 	grpc.ServerStream
 }
 
-func (x *biddingServiceHandshakeServer) Send(m *BidResponse) error {
+func (x *biddingServiceHandshakeServer) Send(m *PutResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
 func _BiddingService_SendBid_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Bid)
+	m := new(Put)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func _BiddingService_SendBid_Handler(srv interface{}, stream grpc.ServerStream) 
 }
 
 type BiddingService_SendBidServer interface {
-	Send(*BidResponse) error
+	Send(*PutResponse) error
 	grpc.ServerStream
 }
 
@@ -205,12 +205,12 @@ type biddingServiceSendBidServer struct {
 	grpc.ServerStream
 }
 
-func (x *biddingServiceSendBidServer) Send(m *BidResponse) error {
+func (x *biddingServiceSendBidServer) Send(m *PutResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
 func _BiddingService_RequestCurrentResult_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Request)
+	m := new(Get)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func _BiddingService_RequestCurrentResult_Handler(srv interface{}, stream grpc.S
 }
 
 type BiddingService_RequestCurrentResultServer interface {
-	Send(*RequestResponse) error
+	Send(*GetResponse) error
 	grpc.ServerStream
 }
 
@@ -226,7 +226,7 @@ type biddingServiceRequestCurrentResultServer struct {
 	grpc.ServerStream
 }
 
-func (x *biddingServiceRequestCurrentResultServer) Send(m *RequestResponse) error {
+func (x *biddingServiceRequestCurrentResultServer) Send(m *GetResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 

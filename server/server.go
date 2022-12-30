@@ -11,7 +11,6 @@ import (
 	"log"
 	"net"
 	"sync"
-	"time"
 
 	request "github.com/lucasfth/disys-exam-active-replication/grpc"
 	"google.golang.org/grpc"
@@ -21,11 +20,6 @@ func main(){
 	var id int32
 	log.Printf("Enter id below:")
 	fmt.Scanln(&id)
-
-	var endHour, endMin int
-	log.Printf("Enter auction time below in hour and min:")
-	fmt.Scanln(&endHour, &endMin)
-	end := time.Date (time.Now().Year(), time.Now().Month(), time.Now().Day(), endHour, endMin, 0, 0, time.Local)
 
 	// To change log location, outcomment below
 
@@ -51,10 +45,7 @@ func main(){
 	server := &server{
 		mutex: sync.Mutex{},
 		ownPort: port,
-		currentBid: 0,
-		currentBidOwner: "", 
-		isOver: false, 
-		auctionEnd: end,
+		table: make(map[int32]int32),
 		ctx: context.Background(),
 	}
 
@@ -70,40 +61,28 @@ func main(){
 func(s *server) Handshake(in *request.ClientHandshake, srv request.BiddingService_HandshakeServer) error {
 	log.Printf("Handshake 	%s", in.Name)
 
-	resp := &request.BidResponse{}
-	resp.Response = "Succes"
+	resp := &request.PutResponse{}
+	resp.Response = true
 	srv.Send(resp);	
 	return nil;
 }
 
-func (s *server) SendBid(in *request.Bid, srv request.BiddingService_SendBidServer) error{
+func (s *server) SendBid(in *request.Put, srv request.BiddingService_SendBidServer) error{
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	resp := &request.BidResponse{}
-
-	if (time.Until(s.auctionEnd) <= 0) {
-		if !s.isOver { log.Printf("--- Auction is over, %s won with bid %v ---", s.currentBidOwner, s.currentBid) }
-		s.isOver = true
-	}
+	resp := &request.PutResponse{}
 
 	var output bytes.Buffer
-	output.WriteString(fmt.Sprintf("Bid\t\t%s", in.Name))
+	output.WriteString(fmt.Sprintf("Update hash %v with %v :", in.Hash, in.Val))
 
-	if s.isOver {
-		resp.Response = "Fail"
-		output.WriteString(fmt.Sprintf("\t%s with %v but auction over, winner: %s , with: %v", resp.Response, in.Amount, s.currentBidOwner, s.currentBid))
-	} else if in.Amount > s.currentBid {
-		s.currentBid = in.Amount
-		s.currentBidOwner = in.Name
-		resp.Response = "Success"
-		output.WriteString(fmt.Sprintf("\t%s with %v", resp.Response, in.Amount))
-	} else if in.Amount <= s.currentBid {
-		resp.Response = "Fail"
-		output.WriteString(fmt.Sprintf("\t%s with %v", resp.Response, in.Amount))
+	if in.Hash < 0 {
+		resp.Response = false
+		output.WriteString(" fail")
 	} else {
-		resp.Response = "Exception"
-		output.WriteString(fmt.Sprintf("\t%s with %v", resp.Response, in.Amount))
+		s.table[in.Hash] = in.Val
+		resp.Response = true
+		output.WriteString(" success")
 	}
 
 	log.Print(output.String())
@@ -112,21 +91,14 @@ func (s *server) SendBid(in *request.Bid, srv request.BiddingService_SendBidServ
 	return nil
 }
 
-func (s *server) RequestCurrentResult(in *request.Request, srv request.BiddingService_RequestCurrentResultServer) error {
-	log.Printf("Request\t%s	highest bid is: %v by: %s", in.Name, s.currentBid, s.currentBidOwner)
-
-	if (time.Until(s.auctionEnd) <= 0) {
-		s.isOver = true
-	}
+func (s *server) RequestCurrentResult(in *request.Get, srv request.BiddingService_RequestCurrentResultServer) error {
+	val := s.table[in.Hash]
 	
-	resp := &request.RequestResponse{}
-	resp.HighestBid = s.currentBid
-	resp.IsOver = s.isOver
-	if s.isOver {
-		resp.WinnerName = s.currentBidOwner
-	} else {
-		resp.WinnerName = ""
-	}
+	log.Printf("Hash %v	with %v", in.Hash, val)
+	
+	resp := &request.GetResponse{}
+	resp.Val = val
+
 	srv.Send(resp);
 	return nil;
 }
@@ -134,10 +106,7 @@ func (s *server) RequestCurrentResult(in *request.Request, srv request.BiddingSe
 type server struct{
 	mutex 			sync.Mutex
 	ownPort 		int32
-	currentBid 		int32
-	currentBidOwner	string
-	isOver 			bool
-	auctionEnd 		time.Time
+	table 			map[int32]int32
 	ctx 			context.Context
 	request.UnimplementedBiddingServiceServer
 }

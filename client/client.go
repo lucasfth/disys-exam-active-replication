@@ -81,42 +81,43 @@ func (c *client) communication() {
 	for { // Communication loop
 		rand.Seed(time.Now().UnixNano()) // ensure "random" number is different each time
 		actionType := int32(rand.Intn(2)) // 0 = bid, 1 = request
+		randomHash := int32(rand.Intn(1000))
 
 		if actionType == 0 {
 			// log.Printf("Action type: Bid")
-			randomBid := int32(rand.Intn(1000))
-			c.sendBids(randomBid)
+			randomVal := int32(rand.Intn(1000))
+			c.sendBids(randomHash, randomVal)
 			time.Sleep(4 * time.Second)
 		} else {
 			// log.Printf("Action type: Request")
-			c.requestCurrentResults()
+			c.requestCurrentResults(randomHash)
 			time.Sleep(4 * time.Second)
 		}
 	}
 }
 
-func (c *client) sendBids(bid int32){
-	responses := make([]string, len(c.servers))
+func (c *client) sendBids(hash int32, val int32) {
+	responses := make([]bool, len(c.servers))
 	for i := 0; i < len(c.servers); i++ { // Send bid to all servers
-		response, _ := c.sendBid(int32(i), bid)
+		response, _ := c.sendBid(int32(i), hash, val)
 		responses[i] = response
 	}
-	logicResponse := c.logic(responses, bid)
+	resp, logicResponse := c.logic(responses)
 	
 	if logicResponse == "Exception" {
 		log.Print("Tried to bid but found EXCEPTION")
 		os.Exit(1)
 	}
 
-	log.Printf("---------Bid %v was %s", bid, logicResponse)
+	log.Printf("---------Hash %v with val %v : %t", hash, val, resp)
 }
 
-func (c *client) sendBid(iteration int32, bid int32) (string, error) {
-	in := &request.Bid{Name: c.name, Amount: bid}
+func (c *client) sendBid(iteration int32, hash int32, val int32) (bool, error) {
+	in := &request.Put{Hash: hash, Val: val}
 	stream, err := c.servers[iteration].SendBid(context.Background(), in)
 	if err != nil {
 		serverDown(iteration, c)
-		return "nil", err
+		return false, err
 	}
 	resp, err := stream.Recv()
 	return resp.GetResponse(), err
@@ -131,48 +132,30 @@ func serverDown (iteration int32, c *client) (bool){
 	return false // Server was already down
 }
 
-func (c *client) requestCurrentResults() (currentRelaventBid int32){
-	var highestBid int32 
-	var isOver bool
-	var winnnerName string
-	var winnerAmount int32
+func (c *client) requestCurrentResults(hash int32) (currentRelaventBid int32){
+	var value int32 
+
 	for i := 0; i < len(c.servers); i++ { // Request current result from all servers
-		resp, err := c.requestCurrentResult(int32(i))
+		resp, err := c.requestCurrentResult(int32(i), hash)
 		if err != nil {
 			if serverDown(int32(i), c) {
 				c.downedServerInt++
 			}
 			continue
 		}
-		if (c.downedServerInt == int32(len(c.servers))){
+		if (c.downedServerInt == int32(len(c.servers))){ // All servers are probably down
 			log.Printf("Tried to request but found EXCEPTION")
 			os.Exit(1)
 		}
-		if (resp.IsOver) {
-			isOver = true
-			winnnerName = resp.WinnerName
-			winnerAmount = resp.HighestBid
-		}
-		highestBid = resp.HighestBid
+		
+		value = resp.Val
 	}
-	if (isOver) {
-		auctionFinished(winnnerName, winnerAmount, c.name)
-	}
-	log.Printf("---------Current highest bid is %v", highestBid)
-	return highestBid
+	log.Printf("---------Current val on hash %v is %v", hash, value)
+	return value
 }
 
-func auctionFinished(winnerName string, winnerAmount int32, name string) {
-	if (winnerName == name) {
-		log.Printf("Won the auction with bid %v", winnerAmount)
-	} else {
-		log.Printf("Lost the auction")
-	}
-	os.Exit(1)
-}
-
-func (c *client) requestCurrentResult(iteration int32)(*request.RequestResponse, error){
-	in := &request.Request{Name: c.name}
+func (c *client) requestCurrentResult(iteration int32, hash int32)(*request.GetResponse, error){
+	in := &request.Get{Hash: hash}
 	stream, err := c.servers[iteration].RequestCurrentResult(context.Background(), in)
 	if err != nil {
 		return nil, err
@@ -181,20 +164,20 @@ func (c *client) requestCurrentResult(iteration int32)(*request.RequestResponse,
 	return resp, err
 }
 
-func (c *client) logic(responses []string, bid int32) (string) {
+func (c *client) logic(responses []bool) (bool, string) {
 	for i := 0; i < len(responses); i++ {
 		// log.Printf("Response was: %s ,on i: %v", responses[i], i)
-		if responses[i] == "Success" {
+		if responses[i] {
 			// log.Printf("Went into success")
-			return "Succes"
-		} else if responses[i] == "Fail" {
+			return true, "Success"
+		} else if responses[i] {
 			// log.Printf("Went into fail")
-			return "Fail"
+			return false, "Fail"
 		} else if (i == len(responses) - 1) {
-			return "Exception"
+			return false, "Exception"
 		}
 	}
-	return "Fail"
+	return false, "Exception"
 }
 
 type client struct {
